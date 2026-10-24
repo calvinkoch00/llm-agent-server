@@ -8,6 +8,8 @@ services:
       - "8000:8000"
     volumes:
       - ./app:/code/app
+    environment:
+      - LLM_API_KEY=${LLM_AGENT_API_KEY}
     depends_on:
       - ollama
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
