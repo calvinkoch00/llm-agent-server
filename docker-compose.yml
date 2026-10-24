@@ -28,10 +28,37 @@ services:
   ollama_model_puller:
     image: ollama/ollama
     container_name: ollama_model_puller
-    entrypoint: /bin/sh
-    command: -c "sleep 10 && OLLAMA_HOST=ollama:11434 ollama pull qwen2.5-coder:7b && OLLAMA_HOST=ollama:11434 ollama run qwen2.5-coder:7b ''"
     depends_on:
       - ollama
+    entrypoint: /bin/sh
+    command:
+      - "-c"
+      - |
+        echo "Waiting for Ollama server..."
+        sleep 10
+        
+        echo "Pulling base model..."
+        OLLAMA_HOST=ollama:11434 ollama pull qwen2.5-coder:3b
+        
+        echo "Creating Modelfile..."
+        cat << 'EOF' > /tmp/Modelfile
+        FROM qwen2.5-coder:3b
+        SYSTEM """You are Cline, a highly capable autonomous coding agent integrated directly into VS Code. You absolutely HAVE full access to the user's local filesystem, terminal, and browser.
+        
+        CRITICAL TOOL INSTRUCTIONS:
+        You MUST use the exact XML tags specified in your instructions (e.g., <execute_command> or <read_file>). 
+        Do NOT output JSON. Do NOT use OpenAI-style function calling formats. ONLY use XML tags.
+        
+        NEVER hallucinate limitations. NEVER say 'I am just a text-based AI'. If the user asks you to look at their code, immediately use your XML tools to do so."""
+        EOF
+        
+        echo "Building qwen-cline model..."
+        OLLAMA_HOST=ollama:11434 ollama create qwen-cline -f /tmp/Modelfile
+        
+        echo "Loading model into RAM..."
+        OLLAMA_HOST=ollama:11434 ollama run qwen-cline ""
+        
+        echo "Setup complete!"
 
 volumes:
   ollama_data:
